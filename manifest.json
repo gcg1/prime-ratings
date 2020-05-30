@@ -1,0 +1,33 @@
+{
+  "name": "Prime Ratings: IMDb Ratings on Prime Video",
+  "version": "0.0.0.5",
+  "description": "See IMDb ratings for shows on the Amazon Prime Video homepage.",
+  "manifest_version": 2,
+  "content_security_policy": "script-src 'self' https://cdn.firebase.com https://*.firebaseio.com; object-src 'self'",
+  "icons": { "128": "icon128.png" },
+  "browser_action": {
+    "default_icon": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.amazon.co.uk/Amazon-Video/*",
+        "https://www.amazon.co.uk/gp/video/*",
+        "https://www.amazon.com/Amazon-Video/*",
+        "https://www.amazon.com/gp/video/*",
+        "https://www.amazon.de/Amazon-Video/*",
+        "https://www.amazon.de/gp/video/*",
+        "https://www.amazon.fr/Amazon-Video/*",
+        "https://www.amazon.de/fr/video/*",
+        "https://www.primevideo.com/*"
+      ],
+      "css": ["styles.css"],
+      "js": [
+        "firebase-app.js",
+        "firebase-firestore.js",
+        "db.js",
+        "background.js"
+      ]
+    }
+  ]
+}

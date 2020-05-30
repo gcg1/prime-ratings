@@ -1,0 +1,18 @@
+.imdb-rating {
+  position: absolute;
+  font-size: 1rem;
+  z-index: 4;
+  right: 0;
+  padding: 0.2rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #000;
+  background: #f5c518;
+  opacity: 0;
+  transition: opacity 150ms;
+  pointer-events: none;
+}
+
+.rated .imdb-rating {
+  opacity: 1;
+}
