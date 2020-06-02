@@ -80,31 +80,30 @@ const checkOmdb = (firebaseDocId, truncatedTitle, currentResult) => {
   );
 };
 
-const getRatingAndCreateLabel = (
+const getRatingAndCreateLabel = async (
   currentResult,
   truncatedTitle,
   firebaseDocId
 ) => {
-  let dbDoc = db.collection("media").doc(firebaseDocId);
-  dbDoc
-    .get()
-    .then((doc) => {
-      if (doc.exists) {
-        let rating = doc.data().imdbRating;
-        if (rating.includes(".") === true) {
-          createRatingLabelElement(rating, currentResult);
-          // console.log(`Got rating from Firestore for ${truncatedTitle}`);
-        } else {
-          // createRatingLabelElement("+", currentResult);
-        }
+  const dbDoc = db.collection("media").doc(firebaseDocId);
+
+  try {
+    let doc = await dbDoc.get();
+    if (doc.exists) {
+      let rating = doc.data().imdbRating;
+      if (rating.includes(".") === true) {
+        createRatingLabelElement(rating, currentResult);
+        // console.log(`Got rating from Firestore for ${truncatedTitle}`);
       } else {
-        // console.log(`No ${truncatedTitle} in Firestore, checking OMDb...`);
-        checkOmdb(firebaseDocId, truncatedTitle, currentResult);
+        // createRatingLabelElement("+", currentResult);
       }
-    })
-    .catch((error) => {
-      console.log("Error getting document:", error);
-    });
+    } else {
+      // console.log(`No ${truncatedTitle} in Firestore, checking OMDb...`);
+      checkOmdb(firebaseDocId, truncatedTitle, currentResult);
+    }
+  } catch (error) {
+    console.log("Error getting document:", error);
+  }
 };
 
 const addRatingLabel = (currentResult) => {
