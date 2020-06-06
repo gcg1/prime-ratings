@@ -20,64 +20,57 @@ const createRatingLabelElement = (rating, currentResult) => {
   currentResult.insertBefore(newItem, currentResult.childNodes[0]);
 };
 
-const addResultToFirestore = (firebaseDocId, data) => {
+const addResultToFirestore = async (firebaseDocId, data) => {
   let media = db.collection("media");
+
   if (data !== undefined) {
-    media
-      .doc(firebaseDocId)
-      .set({
+    try {
+      media.doc(firebaseDocId).set({
         Title: data.Title,
         Year: data.Year,
         imdbID: data.imdbID,
         imdbRating: data.imdbRating,
         imdbVotes: data.imdbVotes,
-      })
-      .then(() => {
-        console.log(`${data.Title} added to Firestore with rating.`);
-      })
-      .catch((error) => {
-        console.error("Error writing document: ", error);
       });
+      // console.log(`${await data.Title} added to Firestore with rating.`);
+    } catch (error) {
+      // console.error("Error writing document: ", error);
+    }
   } else {
-    media
-      .doc(firebaseDocId)
-      .set({
+    try {
+      media.doc(firebaseDocId).set({
         Title: "",
         Year: "",
         imdbID: "",
         imdbRating: "",
         imdbVotes: "",
-      })
-      .then(() => {
-        console.log(`${firebaseDocId} added to Firestore without rating.`);
-      })
-      .catch((error) => {
-        console.error("Error writing document: ", error);
       });
+      console.log(`${await firebaseDocId} added to Firestore without rating.`);
+    } catch (error) {
+      console.error("Error writing document: ", error);
+    }
   }
 };
 
-const checkOmdb = (firebaseDocId, truncatedTitle, currentResult) => {
-  fetch(`https://www.omdbapi.com/?t=${truncatedTitle}&apikey=c04db74d`).then(
-    (response) => {
-      response
-        .json()
-        .then((data) => {
-          if (typeof data.imdbRating !== "undefined") {
-            createRatingLabelElement(data.imdbRating, currentResult);
-            // console.log(`Got rating from OMDb for ${truncatedTitle}`);
-            addResultToFirestore(firebaseDocId, data);
-          } else {
-            let data = undefined;
-            // console.log(`Couldn't find ${truncatedTitle} in OMDb.`);
-            addResultToFirestore(firebaseDocId, data);
-          }
-        })
-        .catch((error) => {
-          console.log(`${error} - no result for ${truncatedTitle} in OMDb.`);
-        });
+const checkOmdb = async (firebaseDocId, truncatedTitle, currentResult) => {
+  try {
+    let response = await fetch(
+      `https://www.omdbapi.com/?t=${truncatedTitle}&apikey=c04db74d`
+    );
+    let data = await response.json();
+
+    if (typeof data.imdbRating !== "undefined") {
+      createRatingLabelElement(data.imdbRating, currentResult);
+      // console.log(`Got rating from OMDb for ${truncatedTitle}`);
+      addResultToFirestore(firebaseDocId, data);
+    } else {
+      let data = undefined;
+      // console.log(`Couldn't find ${truncatedTitle} in OMDb.`);
+      addResultToFirestore(firebaseDocId, data);
     }
-  );
+  } catch {
+    console.log(`${await error} - no result for ${truncatedTitle} in OMDb.`);
+  }
 };
 
 const getRatingAndCreateLabel = async (

@@ -1,6 +1,6 @@
 {
   "name": "Prime Ratings: IMDb Ratings on Prime Video",
-  "version": "0.0.0.6",
+  "version": "0.0.0.7",
   "description": "See IMDb ratings for shows on the Amazon Prime Video homepage.",
   "manifest_version": 2,
   "content_security_policy": "script-src 'self' https://cdn.firebase.com https://*.firebaseio.com; object-src 'self'",
