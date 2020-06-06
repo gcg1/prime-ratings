@@ -8,11 +8,16 @@
   letter-spacing: -0.5px;
   color: #000;
   background: #f5c518;
-  opacity: 0;
   transition: opacity 150ms;
   pointer-events: none;
 }
 
-.rated .imdb-rating {
-  opacity: 1;
+.s-result-item .imdb-rating {
+  right: initial;
+  margin-left: 12px;
+  margin-top: 39px;
+}
+
+.av-grid-wrapper ._249xJW:hover .tst-hover-container {
+  z-index: 5;
 }

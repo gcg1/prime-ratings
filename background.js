@@ -45,7 +45,7 @@ const addResultToFirestore = async (firebaseDocId, data) => {
         imdbRating: "",
         imdbVotes: "",
       });
-      console.log(`${await firebaseDocId} added to Firestore without rating.`);
+      // console.log(`${await firebaseDocId} added to db without rating.`);
     } catch (error) {
       console.error("Error writing document: ", error);
     }
@@ -79,7 +79,6 @@ const getRatingAndCreateLabel = async (
   firebaseDocId
 ) => {
   const dbDoc = db.collection("media").doc(firebaseDocId);
-
   try {
     let doc = await dbDoc.get();
     if (doc.exists) {
@@ -87,8 +86,6 @@ const getRatingAndCreateLabel = async (
       if (rating.includes(".") === true) {
         createRatingLabelElement(rating, currentResult);
         // console.log(`Got rating from Firestore for ${truncatedTitle}`);
-      } else {
-        // createRatingLabelElement("+", currentResult);
       }
     } else {
       // console.log(`No ${truncatedTitle} in Firestore, checking OMDb...`);
@@ -99,7 +96,7 @@ const getRatingAndCreateLabel = async (
   }
 };
 
-const addRatingLabel = (currentResult) => {
+const addCardRatingLabel = (currentResult) => {
   if (currentResult.getElementsByTagName("a").length > 0) {
     let resultTitle = currentResult
       .getElementsByTagName("a")[0]
@@ -120,16 +117,78 @@ const addRatingLabel = (currentResult) => {
   }
 };
 
-const rateVisibleResults = () => {
-  // console.log("rating visible results...");
+const rateMainScreenResults = () => {
   let results = document.getElementsByClassName("tst-title-card");
   for (let i = 0; i < results.length; i++) {
     let rated = results[i].classList.contains("rated");
     let visible = isElementXPercentInViewport(results[i], 20);
     if (!rated && visible) {
       results[i].classList.add("rated");
-      addRatingLabel(results[i]);
+      addCardRatingLabel(results[i]);
     }
+  }
+};
+
+const addSeeMoreResultRatingLabel = (currentResult) => {
+  // console.log("Adding search result rating label...");
+  if (currentResult.getElementsByClassName("av-beard-title-link").length > 0) {
+    let resultTitle = currentResult.getElementsByClassName(
+      "av-beard-title-link"
+    )[0].textContent;
+    let truncatedTitle = resultTitle
+      .split(" Season ")[0]
+      .replace(/ -|,|\[|\]|\(|\)/g, "")
+      .trim()
+      .replace(/ /g, "+")
+      .replace(":+The+Complete+First+Season", "");
+    let firebaseDocId = truncatedTitle.toLowerCase().replace(/\+|'/g, "");
+    if (
+      firebaseDocId.includes("vs.") === false &&
+      firebaseDocId.includes("replay:") === false
+    ) {
+      getRatingAndCreateLabel(currentResult, truncatedTitle, firebaseDocId);
+    }
+  }
+};
+
+const rateSeeMoreResults = () => {
+  let results = document.getElementsByClassName("tst-hover-container");
+  for (let i = 0; i < results.length; i++) {
+    let rated = results[i].classList.contains("rated");
+    let visible = isElementXPercentInViewport(results[i], 20);
+    if (!rated && visible) {
+      results[i].classList.add("rated");
+      addSeeMoreResultRatingLabel(results[i]);
+    }
+  }
+};
+
+const addSearchResultRatingLabel = (currentResult) => {
+  // console.log("Adding search result rating label...");
+  if (currentResult.getElementsByClassName("a-size-medium").length > 0) {
+    let resultTitle = currentResult.getElementsByClassName("a-size-medium")[0]
+      .textContent;
+    let truncatedTitle = resultTitle
+      .split(" Season ")[0]
+      .replace(/ -|,|\[|\]|\(|\)/g, "")
+      .trim()
+      .replace(/ /g, "+")
+      .replace(":+The+Complete+First+Season", "");
+    let firebaseDocId = truncatedTitle.toLowerCase().replace(/\+|'/g, "");
+    if (
+      firebaseDocId.includes("vs.") === false &&
+      firebaseDocId.includes("replay:") === false
+    ) {
+      getRatingAndCreateLabel(currentResult, truncatedTitle, firebaseDocId);
+    }
+  }
+};
+
+const rateSearchResults = () => {
+  // console.log("Rating search results...");
+  let results = document.getElementsByClassName("s-result-item");
+  for (let i = 0; i < results.length; i++) {
+    addSearchResultRatingLabel(results[i]);
   }
 };
 
@@ -138,10 +197,32 @@ let debouncedRateVisibleResults = () => {
   if (timer) return;
   timer = setTimeout(() => {
     timer = null;
-    rateVisibleResults();
-  }, 400);
+    rateMainScreenResults();
+  }, 300);
 };
 
-window.addEventListener("load", rateVisibleResults);
-window.addEventListener("scroll", debouncedRateVisibleResults);
-window.addEventListener("click", rateVisibleResults);
+let debouncedRateSeeMoreResults = () => {
+  if (timer) return;
+  timer = setTimeout(() => {
+    timer = null;
+    rateSeeMoreResults();
+  }, 300);
+};
+
+if (
+  window.location.href.includes("/gp/") ||
+  window.location.href.includes("Amazon-Video")
+) {
+  if (window.location.href.includes("search/ref")) {
+    window.addEventListener("load", rateSeeMoreResults);
+    window.addEventListener("scroll", debouncedRateSeeMoreResults);
+  } else {
+    window.addEventListener("load", rateMainScreenResults);
+    window.addEventListener("scroll", debouncedRateVisibleResults);
+    window.addEventListener("click", rateMainScreenResults);
+  }
+}
+
+if (window.location.href.includes("instant-video")) {
+  window.addEventListener("load", rateSearchResults);
+}
