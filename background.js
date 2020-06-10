@@ -1,17 +1,3 @@
-const isElementXPercentInViewport = (el, percentVisible) => {
-  let rect = el.getBoundingClientRect();
-  let windowHeight =
-    window.innerHeight || document.documentElement.clientHeight;
-
-  return !(
-    Math.floor(
-      100 - ((rect.top >= 0 ? 0 : rect.top) / +-(rect.height / 1)) * 100
-    ) < percentVisible ||
-    Math.floor(100 - ((rect.bottom - windowHeight) / rect.height) * 100) <
-      percentVisible
-  );
-};
-
 const createRatingLabelElement = (rating, currentResult) => {
   let newItem = document.createElement("SPAN");
   newItem.setAttribute("class", "imdb-rating");
@@ -121,8 +107,7 @@ const rateMainScreenResults = () => {
   let results = document.getElementsByClassName("tst-title-card");
   for (let i = 0; i < results.length; i++) {
     let rated = results[i].classList.contains("rated");
-    let visible = isElementXPercentInViewport(results[i], 20);
-    if (!rated && visible) {
+    if (!rated) {
       results[i].classList.add("rated");
       addCardRatingLabel(results[i]);
     }
@@ -155,8 +140,7 @@ const rateSeeMoreResults = () => {
   let results = document.getElementsByClassName("tst-hover-container");
   for (let i = 0; i < results.length; i++) {
     let rated = results[i].classList.contains("rated");
-    let visible = isElementXPercentInViewport(results[i], 20);
-    if (!rated && visible) {
+    if (!rated) {
       results[i].classList.add("rated");
       addSeeMoreResultRatingLabel(results[i]);
     }
@@ -193,36 +177,36 @@ const rateSearchResults = () => {
 };
 
 let timer;
-let debouncedRateVisibleResults = () => {
+let debouncedRateResults = () => {
   if (timer) return;
   timer = setTimeout(() => {
     timer = null;
     rateMainScreenResults();
-  }, 300);
-};
-
-let debouncedRateSeeMoreResults = () => {
-  if (timer) return;
-  timer = setTimeout(() => {
-    timer = null;
     rateSeeMoreResults();
   }, 300);
 };
 
 if (
   window.location.href.includes("/gp/") ||
-  window.location.href.includes("Amazon-Video")
+  window.location.href.includes("Amazon-Video") ||
+  window.location.href.includes("primevideo")
 ) {
-  if (window.location.href.includes("search/ref")) {
-    window.addEventListener("load", rateSeeMoreResults);
-    window.addEventListener("scroll", debouncedRateSeeMoreResults);
-  } else {
-    window.addEventListener("load", rateMainScreenResults);
-    window.addEventListener("scroll", debouncedRateVisibleResults);
-    window.addEventListener("click", rateMainScreenResults);
-  }
+  window.addEventListener("load", rateSeeMoreResults);
+  window.addEventListener("scroll", debouncedRateResults);
+  window.addEventListener("load", rateMainScreenResults);
+  window.addEventListener("click", rateMainScreenResults);
 }
 
-if (window.location.href.includes("instant-video")) {
-  window.addEventListener("load", rateSearchResults);
-}
+let primeSearchResultsVolume = 0;
+const lookForPrimeVideoSearchResults = () => {
+  let resultLinks = document.getElementsByClassName("a-text-bold");
+  for (let i = 0; i < resultLinks.length; i++) {
+    if (resultLinks[i].textContent.includes("Prime Video") === true) {
+      primeSearchResultsVolume++;
+    }
+  }
+  if (primeSearchResultsVolume > 5) {
+    rateSearchResults();
+  }
+};
+document.onload = lookForPrimeVideoSearchResults();
