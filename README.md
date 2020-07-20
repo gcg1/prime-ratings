@@ -1,4 +1,4 @@
-# prime-ratings
+# Prime Ratings
 
 Chrome extension to overlay IMDb ratings on Amazon Prime Video. 
 
