@@ -1,14 +1,24 @@
-const createRatingLabelElement = (rating, currentResult) => {
-  let newItem = document.createElement("SPAN");
-  newItem.setAttribute("class", "imdb-rating");
-  let textnode = document.createTextNode(rating);
-  newItem.appendChild(textnode);
-  currentResult.insertBefore(newItem, currentResult.childNodes[0]);
+const truncateTitle = (title) => {
+  return title
+    .replace("(4K UHD)", "")
+    .split(" Season ")[0]
+    .replace(/ -|,|\[|\]|\(|\)/g, "")
+    .trim()
+    .replace(/ /g, "+")
+    .replace(":+The+Complete+First+Season", "")
+    .replace(/\//g, "");
 };
 
-const addResultToFirestore = async (firebaseDocId, data) => {
-  let media = db.collection("media");
+const createRatingLabel = (rating, currentResult) => {
+  const label = document.createElement("SPAN");
+  label.setAttribute("class", "imdb-rating");
+  const textnode = document.createTextNode(rating);
+  label.appendChild(textnode);
+  currentResult.insertBefore(label, currentResult.childNodes[0]);
+};
 
+const addOMDbRatingToFirestore = async (firebaseDocId, data) => {
+  let media = db.collection("media");
   if (data !== undefined) {
     try {
       media.doc(firebaseDocId).set({
@@ -18,9 +28,8 @@ const addResultToFirestore = async (firebaseDocId, data) => {
         imdbRating: data.imdbRating,
         imdbVotes: data.imdbVotes,
       });
-      // console.log(`${await data.Title} added to Firestore with rating.`);
     } catch (error) {
-      // console.error("Error writing document: ", error);
+      console.error("Error writing document: ", error);
     }
   } else {
     try {
@@ -31,107 +40,127 @@ const addResultToFirestore = async (firebaseDocId, data) => {
         imdbRating: "",
         imdbVotes: "",
       });
-      // console.log(`${await firebaseDocId} added to db without rating.`);
     } catch (error) {
       console.error("Error writing document: ", error);
     }
   }
 };
 
-const checkOmdb = async (firebaseDocId, truncatedTitle, currentResult) => {
+const addAmazonRatingToFirestore = async (firebaseDocId, amazonRating) => {
+  let media = db.collection("media");
+  try {
+    media.doc(firebaseDocId).set({
+      imdbRating: amazonRating,
+    });
+  } catch (error) {
+    console.error("Error writing document: ", error);
+  }
+};
+
+const checkOMDbAndCreateLabel = async (
+  firebaseDocId,
+  truncatedTitle,
+  currentResult
+) => {
   try {
     let response = await fetch(
       `https://www.omdbapi.com/?t=${truncatedTitle}&apikey=c04db74d`
     );
     let data = await response.json();
-
     if (typeof data.imdbRating !== "undefined") {
-      createRatingLabelElement(data.imdbRating, currentResult);
-      // console.log(`Got rating from OMDb for ${truncatedTitle}`);
-      addResultToFirestore(firebaseDocId, data);
+      createRatingLabel(data.imdbRating, currentResult);
+      addOMDbRatingToFirestore(firebaseDocId, data);
     } else {
       let data = undefined;
-      // console.log(`Couldn't find ${truncatedTitle} in OMDb.`);
-      addResultToFirestore(firebaseDocId, data);
+      addOMDbRatingToFirestore(firebaseDocId, data);
     }
-  } catch {
-    console.log(`${await error} - no result for ${truncatedTitle} in OMDb.`);
+  } catch (error) {
+    console.log("Error writing to document: ", error);
   }
 };
 
 const getRatingAndCreateLabel = async (
   currentResult,
   truncatedTitle,
-  firebaseDocId
+  firebaseDocId,
+  amazonRating
 ) => {
   const dbDoc = db.collection("media").doc(firebaseDocId);
   try {
-    let doc = await dbDoc.get();
+    let rating;
+    const doc = await dbDoc.get();
     if (doc.exists) {
-      let rating = doc.data().imdbRating;
-      if (rating.includes(".") === true) {
-        createRatingLabelElement(rating, currentResult);
-        // console.log(`Got rating from Firestore for ${truncatedTitle}`);
+      const firestoreRating = doc.data().imdbRating;
+      if (amazonRating !== undefined) {
+        if (amazonRating.length === 1) {
+          amazonRating += ".0";
+        }
+        rating = amazonRating;
+        if (amazonRating !== firestoreRating) {
+          addAmazonRatingToFirestore(firebaseDocId, amazonRating);
+        }
+      } else {
+        rating = firestoreRating;
+      }
+      if (rating.includes(".")) {
+        createRatingLabel(rating, currentResult);
       }
     } else {
-      // console.log(`No ${truncatedTitle} in Firestore, checking OMDb...`);
-      checkOmdb(firebaseDocId, truncatedTitle, currentResult);
+      checkOMDbAndCreateLabel(firebaseDocId, truncatedTitle, currentResult);
     }
   } catch (error) {
     console.log("Error getting document:", error);
   }
 };
 
-const addCardRatingLabel = (currentResult) => {
+const addMainResultRatingLabel = (currentResult) => {
   if (currentResult.getElementsByTagName("a").length > 0) {
     let resultTitle = currentResult
       .getElementsByTagName("a")[0]
       .getAttribute("aria-label");
-    let truncatedTitle = resultTitle
-      .split(" Season ")[0]
-      .replace(/ -|,|\[|\]|\(|\)/g, "")
-      .trim()
-      .replace(/ /g, "+")
-      .replace(":+The+Complete+First+Season", "");
-    let firebaseDocId = truncatedTitle.toLowerCase().replace(/\+|'/g, "");
-    if (
-      firebaseDocId.includes("vs.") === false &&
-      firebaseDocId.includes("replay:") === false
-    ) {
-      getRatingAndCreateLabel(currentResult, truncatedTitle, firebaseDocId);
+    if (resultTitle) {
+      let truncatedTitle = truncateTitle(resultTitle);
+      let firebaseDocId = truncatedTitle.toLowerCase().replace(/\+|'/g, "");
+      if (
+        firebaseDocId.includes("vs.") === false &&
+        firebaseDocId.includes("replay:") === false
+      ) {
+        getRatingAndCreateLabel(currentResult, truncatedTitle, firebaseDocId);
+      }
     }
   }
 };
 
-const rateMainScreenResults = () => {
-  let results = document.getElementsByClassName("tst-title-card");
+const rateMainResults = () => {
+  const results = document.getElementsByClassName("tst-title-card");
   for (let i = 0; i < results.length; i++) {
     let rated = results[i].classList.contains("rated");
     if (!rated) {
       results[i].classList.add("rated");
-      addCardRatingLabel(results[i]);
+      addMainResultRatingLabel(results[i]);
     }
   }
 };
 
-const addSeeMoreResultRatingLabel = (currentResult) => {
-  // console.log("Adding search result rating label...");
+const addSeeMoreResultRatingLabel = (currentResult, amazonRating) => {
   if (currentResult.getElementsByClassName("av-beard-title-link").length > 0) {
     let resultTitle = currentResult.getElementsByClassName(
       "av-beard-title-link"
     )[0].textContent;
-    let truncatedTitle = resultTitle
-      .split(" Season ")[0]
-      .replace(/ -|,|\[|\]|\(|\)/g, "")
-      .trim()
-      .replace(/ /g, "+")
-      .replace(":+The+Complete+First+Season", "");
-    let firebaseDocId = truncatedTitle.toLowerCase().replace(/\+|'/g, "");
-    if (
-      firebaseDocId.includes("vs.") === false &&
-      firebaseDocId.includes("replay:") === false
-    ) {
-      getRatingAndCreateLabel(currentResult, truncatedTitle, firebaseDocId);
+    if (resultTitle) {
+      let truncatedTitle = truncateTitle(resultTitle);
+      let firebaseDocId = truncatedTitle.toLowerCase().replace(/\+|'/g, "");
+      if (
+        firebaseDocId.includes("vs.") === false &&
+        firebaseDocId.includes("replay:") === false
+      ) {
+        getRatingAndCreateLabel(
+          currentResult,
+          truncatedTitle,
+          firebaseDocId,
+          amazonRating
+        );
+      }
     }
   }
 };
@@ -141,38 +170,55 @@ const rateSeeMoreResults = () => {
   for (let i = 0; i < results.length; i++) {
     let rated = results[i].classList.contains("rated");
     if (!rated) {
+      let amazonRating;
+      const amazonRatingLabel = results[i].querySelector(
+        ".dv-grid-beard-info > span"
+      );
+      if (amazonRatingLabel && amazonRatingLabel.innerHTML.includes("IMDb ")) {
+        amazonRating = amazonRatingLabel.innerHTML.replace("IMDb ", "");
+      }
       results[i].classList.add("rated");
-      addSeeMoreResultRatingLabel(results[i]);
+      addSeeMoreResultRatingLabel(results[i], amazonRating);
     }
   }
 };
 
 const addSearchResultRatingLabel = (currentResult) => {
-  // console.log("Adding search result rating label...");
   if (currentResult.getElementsByClassName("a-size-medium").length > 0) {
     let resultTitle = currentResult.getElementsByClassName("a-size-medium")[0]
       .textContent;
-    let truncatedTitle = resultTitle
-      .split(" Season ")[0]
-      .replace(/ -|,|\[|\]|\(|\)/g, "")
-      .trim()
-      .replace(/ /g, "+")
-      .replace(":+The+Complete+First+Season", "");
-    let firebaseDocId = truncatedTitle.toLowerCase().replace(/\+|'/g, "");
-    if (
-      firebaseDocId.includes("vs.") === false &&
-      firebaseDocId.includes("replay:") === false
-    ) {
-      getRatingAndCreateLabel(currentResult, truncatedTitle, firebaseDocId);
+    if (resultTitle) {
+      let truncatedTitle = truncateTitle(resultTitle);
+      let firebaseDocId = truncatedTitle.toLowerCase().replace(/\+|'/g, "");
+      if (
+        firebaseDocId.includes("vs.") === false &&
+        firebaseDocId.includes("replay:") === false
+      ) {
+        getRatingAndCreateLabel(currentResult, truncatedTitle, firebaseDocId);
+      }
     }
   }
 };
 
 const rateSearchResults = () => {
-  // console.log("Rating search results...");
   let results = document.getElementsByClassName("s-result-item");
   for (let i = 0; i < results.length; i++) {
     addSearchResultRatingLabel(results[i]);
+  }
+};
+
+const checkDetailPageAmnazonRating = () => {
+  const amazonRating = document.querySelector(
+    'span[data-automation-id="imdb-rating-badge"]'
+  ).innerHTML;
+  if (amazonRating) {
+    const resultTitle = document.querySelector('h1[data-automation-id="title"]')
+      .innerHTML;
+    if (resultTitle) {
+      const truncatedTitle = truncateTitle(resultTitle);
+      const firebaseDocId = truncatedTitle.toLowerCase().replace(/\+|'/g, "");
+      addAmazonRatingToFirestore(firebaseDocId, amazonRating);
+    }
   }
 };
 
@@ -181,7 +227,7 @@ let debouncedRateResults = () => {
   if (timer) return;
   timer = setTimeout(() => {
     timer = null;
-    rateMainScreenResults();
+    rateMainResults();
     rateSeeMoreResults();
   }, 300);
 };
@@ -193,8 +239,15 @@ if (
 ) {
   window.addEventListener("load", rateSeeMoreResults);
   window.addEventListener("scroll", debouncedRateResults);
-  window.addEventListener("load", rateMainScreenResults);
-  window.addEventListener("click", rateMainScreenResults);
+  window.addEventListener("load", rateMainResults);
+  window.addEventListener("click", rateMainResults);
+}
+
+if (
+  window.location.href.includes("/video/detail") ||
+  window.location.href.includes("s=instant-video")
+) {
+  window.addEventListener("load", checkDetailPageAmnazonRating);
 }
 
 let primeSearchResultsVolume = 0;

@@ -7,11 +7,16 @@
   font-weight: 700;
   letter-spacing: -0.5px;
   color: #000;
-  background: #f5c518;
-  transition: opacity 150ms;
+  background-color: #f5c518;
   pointer-events: none;
 }
 
+/* Ensure no rating overlap on hover for "see more" type pages */
+.tst-hover-container > .imdb-rating {
+  z-index: 1;
+}
+
+/* Search result items */
 .s-result-item .imdb-rating {
   right: initial;
   margin-left: 12px;
