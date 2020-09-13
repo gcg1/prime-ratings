@@ -1,4 +1,5 @@
-.imdb-rating {
+a:link.imdb-rating,
+a:visited.imdb-rating {
   position: absolute;
   font-size: 1rem;
   z-index: 3;
@@ -8,19 +9,29 @@
   letter-spacing: -0.5px;
   color: #000;
   background-color: #f5c518;
-  pointer-events: none;
+  cursor: pointer;
+}
+
+/* Ensure other imdb-ratings don't overlap with hovered cards on main screen */
+.tst-hoverable-card:hover {
+  z-index: 3;
 }
 
 /* Ensure no rating overlap on hover for "see more" type pages */
-.tst-hover-container > .imdb-rating {
+.tst-hover-container > a:link.imdb-rating,
+.tst-hover-container > a:visited.imdb-rating {
   z-index: 1;
 }
 
-/* Search result items */
+/* Search result label styling */
 .s-result-item .imdb-rating {
   right: initial;
   margin-left: 12px;
   margin-top: 39px;
+}
+
+a:link.imdb-rating:hover {
+  text-decoration: underline;
 }
 
 .av-grid-wrapper ._249xJW:hover .tst-hover-container {

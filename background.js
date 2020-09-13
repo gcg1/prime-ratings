@@ -9,14 +9,6 @@ const truncateTitle = (title) => {
     .replace(/\//g, "");
 };
 
-const createRatingLabel = (rating, currentResult) => {
-  const label = document.createElement("SPAN");
-  label.setAttribute("class", "imdb-rating");
-  const textnode = document.createTextNode(rating);
-  label.appendChild(textnode);
-  currentResult.insertBefore(label, currentResult.childNodes[0]);
-};
-
 const addOMDbRatingToFirestore = async (firebaseDocId, data) => {
   let media = db.collection("media");
   if (data !== undefined) {
@@ -46,6 +38,54 @@ const addOMDbRatingToFirestore = async (firebaseDocId, data) => {
   }
 };
 
+const tryAndFetchIMDbId = async (
+  truncatedTitle,
+  firebaseDocId,
+  existingRating
+) => {
+  try {
+    let response = await fetch(
+      `https://www.omdbapi.com/?t=${truncatedTitle}&apikey=c04db74d`
+    );
+    let data = await response.json();
+    if (typeof data.imdbRating !== "undefined") {
+      if (data.imdbRating === existingRating) {
+        addOMDbRatingToFirestore(firebaseDocId, data, true);
+        // console.log(`${firebaseDocId}: Firestore record updated`);
+        return data.imdbID;
+      }
+    }
+  } catch (error) {
+    console.log("Error writing to document: ", error);
+  }
+};
+
+const createRatingLabel = async (
+  rating,
+  currentResult,
+  imdbID,
+  truncatedTitle,
+  firebaseDocId
+) => {
+  const label = document.createElement("a");
+  label.setAttribute("class", "imdb-rating");
+  label.setAttribute("target", "_blank");
+  let id = imdbID;
+  if (id !== undefined && id.length > 0) {
+    label.setAttribute("href", `https://imdb.com/title/${id}`);
+  } else {
+    id = await tryAndFetchIMDbId(truncatedTitle, firebaseDocId, rating);
+    if (id !== undefined && id.length > 0) {
+      label.setAttribute("href", `https://imdb.com/title/${id}`);
+    } else {
+      label.setAttribute("href", `https://imdb.com/find?q=${truncatedTitle}`);
+    }
+  }
+  const textnode = document.createTextNode(rating);
+  label.appendChild(textnode);
+  currentResult.insertBefore(label, currentResult.childNodes[0]);
+};
+
 const addAmazonRatingToFirestore = async (firebaseDocId, amazonRating) => {
   let media = db.collection("media");
   try {
@@ -68,7 +108,13 @@ const checkOMDbAndCreateLabel = async (
     );
     let data = await response.json();
     if (typeof data.imdbRating !== "undefined") {
-      createRatingLabel(data.imdbRating, currentResult);
+      createRatingLabel(
+        data.imdbRating,
+        currentResult,
+        data.imdbID,
+        truncatedTitle,
+        firebaseDocId
+      );
       addOMDbRatingToFirestore(firebaseDocId, data);
     } else {
       let data = undefined;
@@ -97,13 +143,20 @@ const getRatingAndCreateLabel = async (
         }
         rating = amazonRating;
         if (amazonRating !== firestoreRating) {
+          // console.log(`Fixing Firestore rating for ${firebaseDocId}`);
           addAmazonRatingToFirestore(firebaseDocId, amazonRating);
         }
       } else {
         rating = firestoreRating;
       }
       if (rating.includes(".")) {
-        createRatingLabel(rating, currentResult);
+        createRatingLabel(
+          rating,
+          currentResult,
+          doc.data().imdbID,
+          truncatedTitle,
+          firebaseDocId
+        );
       }
     } else {
       checkOMDbAndCreateLabel(firebaseDocId, truncatedTitle, currentResult);
@@ -171,11 +224,15 @@ const rateSeeMoreResults = () => {
     let rated = results[i].classList.contains("rated");
     if (!rated) {
       let amazonRating;
-      const amazonRatingLabel = results[i].querySelector(
+      const resultTags = results[i].querySelectorAll(
         ".dv-grid-beard-info > span"
       );
-      if (amazonRatingLabel && amazonRatingLabel.innerHTML.includes("IMDb ")) {
-        amazonRating = amazonRatingLabel.innerHTML.replace("IMDb ", "");
+      if (resultTags.length > 0) {
+        for (let i = 0; i < resultTags.length; i++) {
+          if (resultTags[i].innerHTML.includes("IMDb ")) {
+            amazonRating = resultTags[i].innerHTML.replace("IMDb ", "");
+          }
+        }
       }
       results[i].classList.add("rated");
       addSeeMoreResultRatingLabel(results[i], amazonRating);
