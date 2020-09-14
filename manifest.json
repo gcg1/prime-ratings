@@ -11,11 +11,11 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.primevideo.com/*",
-        "https://www.amazon.co.uk/*",
-        "https://www.amazon.com/*",
-        "https://amazon.ca/*",
-        "https://amazon.com.au/*"
+        "https://*.primevideo.com/*",
+        "https://*.amazon.co.uk/*",
+        "https://*.amazon.com/*",
+        "https://*.amazon.ca/*",
+        "https://*.amazon.com.au/*"
       ],
       "css": ["styles.css"],
       "js": [

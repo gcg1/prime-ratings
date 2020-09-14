@@ -74,6 +74,7 @@ const createRatingLabel = async (
   if (id !== undefined && id.length > 0) {
     label.setAttribute("href", `https://imdb.com/title/${id}`);
   } else {
+    // console.log("Looking up IMDb id...");
     id = await tryAndFetchIMDbId(truncatedTitle, firebaseDocId, rating);
     if (id !== undefined && id.length > 0) {
       label.setAttribute("href", `https://imdb.com/title/${id}`);
