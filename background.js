@@ -1,3 +1,5 @@
+console.log("Prime Ratings is running");
+
 const truncateTitle = (title) => {
   return title
     .replace("(4K UHD)", "")
