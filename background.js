@@ -53,7 +53,6 @@ const tryAndFetchIMDbId = async (
     if (typeof data.imdbRating !== "undefined") {
       if (data.imdbRating === existingRating) {
         addOMDbRatingToFirestore(firebaseDocId, data, true);
-        // console.log(`${firebaseDocId}: Firestore record updated`);
         return data.imdbID;
       }
     }
@@ -76,7 +75,6 @@ const createRatingLabel = async (
   if (id !== undefined && id.length > 0) {
     label.setAttribute("href", `https://imdb.com/title/${id}`);
   } else {
-    // console.log("Looking up IMDb id...");
     id = await tryAndFetchIMDbId(truncatedTitle, firebaseDocId, rating);
     if (id !== undefined && id.length > 0) {
       label.setAttribute("href", `https://imdb.com/title/${id}`);
@@ -146,7 +144,6 @@ const getRatingAndCreateLabel = async (
         }
         rating = amazonRating;
         if (amazonRating !== firestoreRating) {
-          // console.log(`Fixing Firestore rating for ${firebaseDocId}`);
           addAmazonRatingToFirestore(firebaseDocId, amazonRating);
         }
       } else {
